@@ -5,11 +5,10 @@ from transformer import Constants
 
 
 def paired_collate_fn(insts):
-    src_insts, tgt_insts, label= list(zip(*insts))
+    src_insts, tgt_insts = list(zip(*insts))
     src_insts = collate_fn(src_insts)
     tgt_insts = collate_fn(tgt_insts)
-    label = torch.FloatTensor(label)
-    return (*src_insts, *tgt_insts, label)
+    return (*src_insts, *tgt_insts)
 
 
 def collate_fn(insts):
@@ -32,8 +31,8 @@ def collate_fn(insts):
 
 class EncoderDecoderDataset(torch.utils.data.Dataset):
     def __init__(
-        self, src_word2idx, tgt_word2idx, 
-        src_insts=None, tgt_insts=None, label = None):
+        self, src_word2idx, tgt_word2idx,
+        src_insts=None, tgt_insts=None):
 
         assert src_insts
         assert not tgt_insts or (len(src_insts) == len(tgt_insts))
@@ -47,7 +46,6 @@ class EncoderDecoderDataset(torch.utils.data.Dataset):
         self._tgt_word2idx = tgt_word2idx
         self._tgt_idx2word = tgt_idx2word
         self._tgt_insts = tgt_insts
-        self._label = label
 
     @property
     def n_insts(self):
@@ -89,5 +87,5 @@ class EncoderDecoderDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         if self._tgt_insts:
-            return self._src_insts[idx], self._tgt_insts[idx], self._label[idx]
+            return self._src_insts[idx], self._tgt_insts[idx]
         return self._src_insts[idx]

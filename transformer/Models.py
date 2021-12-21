@@ -115,47 +115,15 @@ class Decoder(nn.Module):
             return dec_output, dec_slf_attn_list, dec_enc_attn_list
         return dec_output,
 
-def weights_init(m):
-
-    classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        m.bias.data.fill_(0)
-
-        nn.init.xavier_uniform_(m.weight,gain=0.5)
-
-    elif classname.find('BatchNorm') != -1:
-
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
-
-class Classifier(nn.Module):
-
-    def __init__(self, latent_size, device):
-        super(Classifier,self).__init__()
-
-        self.latent_size = latent_size
-
-        self.classifier = nn.Sequential(nn.Linear(self.latent_size, 16),
-                                        nn.ReLU(),
-                                        nn.Linear(16, 1)
-                                        )
-
-        self.apply(weights_init)
-        self.to(device)
-
-    def forward(self, x):
-        out = self.classifier(x)
-        return out
 
 class Transformer(nn.Module):
     def __init__(self, n_src_vocab, n_tgt_vocab, len_max_seq, d_word_vec=512, d_model=512, d_inner=2048, n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1, tgt_emb_prj_weight_sharing=True, emb_src_tgt_weight_sharing=True):
         super().__init__()
 
-        self.Classifier = Classifier(d_model, "cuda")
-
         self.encoder = Encoder(n_src_vocab=n_src_vocab, len_max_seq=len_max_seq, d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner, n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,dropout=dropout)
         self.decoder = Decoder(n_tgt_vocab=n_tgt_vocab, len_max_seq=len_max_seq, d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner, n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,dropout=dropout)
-    
+
+        self.mlp = nn.Sequential(nn.Linear(d_model, 16), nn.ReLU(), nn.Linear(16, 2))
         self.tgt_word_prj = nn.Linear(d_model, n_tgt_vocab, bias=False)
         nn.init.xavier_normal_(self.tgt_word_prj.weight)
 
@@ -177,13 +145,13 @@ class Transformer(nn.Module):
         tgt_seq, tgt_pos = tgt_seq[:, :-1], tgt_pos[:, :-1]
 
         enc_output, *_ = self.encoder(src_seq, src_pos)
+
+        return self.mlp(torch.sum(enc_output, dim=1))
         
         # remove if only using encoder
         dec_output, *_ = self.decoder(tgt_seq, tgt_pos, src_seq, enc_output)
         seg_logit = self.tgt_word_prj(dec_output) * self.x_logit_scale
 
         # enc_output is the last hidden with dimension (batch, length, 512)
-
-        enc_output = self.Classifier(enc_output[:,0,:])
         return seg_logit.view(-1, seg_logit.size(2)), enc_output
 

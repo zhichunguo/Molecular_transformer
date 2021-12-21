@@ -1,6 +1,9 @@
+# python preprocess.py \
+#     -train_src logp/logp_train \
+#     -valid_src logp/logp_test \
+#     -save_data logp_data
+
 python preprocess.py \
-    -train_src quora/quora_train.src \
-    -train_tgt quora/quora_train.tgt \
-    -valid_src quora/quora_val.src \
-    -valid_tgt quora/quora_val.tgt \
-    -save_data quora_data
+    -train_src tox21/train.txt \
+    -valid_src tox21/test.txt \
+    -save_data tox21_data
